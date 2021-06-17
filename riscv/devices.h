@@ -40,15 +40,18 @@ class rom_device_t : public abstract_device_t {
 
 class mem_t : public abstract_device_t {
  public:
-  mem_t(size_t size) : len(size) {
+  mem_t(size_t size) :  needsFreeing(true), len(size) {
     if (!size)
       throw std::runtime_error("zero bytes of target memory requested");
     data = (char*)calloc(1, size);
     if (!data)
       throw std::runtime_error("couldn't allocate " + std::to_string(size) + " bytes of target memory");
   }
+  mem_t(size_t size, char* contents) : needsFreeing(false), len(size) {    
+    data = contents;
+  }
   mem_t(const mem_t& that) = delete;
-  ~mem_t() { free(data); }
+  ~mem_t() { if(needsFreeing) free(data); }
 
   bool load(reg_t addr, size_t len, uint8_t* bytes) { return false; }
   bool store(reg_t addr, size_t len, const uint8_t* bytes) { return false; }
@@ -56,6 +59,7 @@ class mem_t : public abstract_device_t {
   size_t size() { return len; }
 
  private:
+  bool needsFreeing;
   char* data;
   size_t len;
 };
