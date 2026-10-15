@@ -26,6 +26,26 @@ enum struct elp_t {
   LP_EXPECTED = 1,
 };
 
+// JITDomain: number of domains (D) and keys (K). The 3-bit encodings cap
+// both at 8; smaller values are not modeled yet.
+static constexpr unsigned JITDOMAIN_NDOMS = 8;
+static constexpr unsigned JITDOMAIN_NKEYS = 8;
+static_assert(JITDOMAIN_NDOMS == 8 && JITDOMAIN_NKEYS == 8);
+
+// JITDomain pending domain entry: set by domcall, consumed by a matching domlpad
+struct dpend_t {
+  bool valid;
+  reg_t dom;
+  reg_t label;
+
+  reg_t pack() const noexcept {
+    return set_field(set_field(set_field(0, DPEND_VALID, valid), DPEND_LABEL, label), DPEND_DOM, dom);
+  }
+  static dpend_t unpack(reg_t v) noexcept {
+    return { (bool)get_field(v, DPEND_VALID), get_field(v, DPEND_DOM), get_field(v, DPEND_LABEL) };
+  }
+};
+
 // Parent, abstract class for all CSRs
 class csr_t {
  public:
@@ -113,6 +133,8 @@ class base_pmpaddr_csr_t: public csr_t {
   bool is_locked() const noexcept {
     return cfg & PMP_L;
   }
+
+  size_t index() const noexcept { return pmpidx; }
 
  protected:
   bool unlogged_write(const reg_t UNUSED val) noexcept override { return false; }
@@ -1123,5 +1145,35 @@ class vstopei_csr_t: public topei_csr_t {
  public:
   vstopei_csr_t(processor_t* const proc, const reg_t addr) : topei_csr_t(proc, addr, nullptr) {}
   void verify_permissions(insn_t insn, bool write) const override;
+};
+
+// JITDomain: dstatus and drights feed the access check, so a write must
+// drop TLB entries that were filled under the old configuration
+class dom_ctrl_csr_t: public masked_csr_t {
+ public:
+  dom_ctrl_csr_t(processor_t* const proc, const reg_t addr, const reg_t mask, const reg_t init);
+ protected:
+  bool unlogged_write(const reg_t val) noexcept override;
+};
+
+// JITDomain: curdom (U RO) = {dpend, curdom}; never written by CSR instructions
+class curdom_csr_t: public csr_t {
+ public:
+  curdom_csr_t(processor_t* const proc, const reg_t addr);
+  reg_t read() const noexcept override;
+ protected:
+  bool unlogged_write(const reg_t val) noexcept override;
+};
+
+// JITDomain: dmpcfg0/1, a {L, k} nibble per PMP entry, 16 entries per CSR
+class dmpcfg_csr_t: public csr_t {
+ public:
+  dmpcfg_csr_t(processor_t* const proc, const reg_t addr);
+  void verify_permissions(insn_t insn, bool write) const override;
+  reg_t read() const noexcept override;
+ protected:
+  bool unlogged_write(const reg_t val) noexcept override;
+ private:
+  size_t first_entry() const noexcept { return (address - CSR_DMPCFG0) * 16; }
 };
 #endif

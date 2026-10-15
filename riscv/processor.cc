@@ -127,6 +127,10 @@ void state_t::reset(processor_t* const proc, reg_t max_isa)
 
   elp = elp_t::NO_LP_EXPECTED;
 
+  curdom = 0;
+  dpend = {};
+  std::fill(std::begin(dmpcfg), std::end(dmpcfg), 0);
+
   critical_error = false;
 
   csr_init(proc, max_isa);

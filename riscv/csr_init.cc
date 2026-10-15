@@ -444,6 +444,24 @@ void state_t::csr_init(processor_t* const proc, reg_t max_isa)
   const reg_t ssp_mask = -reg_t(xlen / 8);
   add_ext_csr(EXT_ZICFISS, CSR_SSP, ssp = std::make_shared<ssp_csr_t>(proc, CSR_SSP, ssp_mask, 0));
 
+  if (proc->extension_enabled_const(EXT_XJITDOMAIN)) {
+    const reg_t dstatus_mask = DSTATUS_EN | DSTATUS_SPD | DSTATUS_SPPEND | DSTATUS_DRSKEY | DSTATUS_SCHK;
+    reg_t dtarget_identity = 0;
+    for (reg_t d = 0; d < JITDOMAIN_NDOMS; d++)
+      dtarget_identity |= d << (3 * d);
+    add_supervisor_csr(CSR_DSTATUS, dstatus = std::make_shared<dom_ctrl_csr_t>(proc, CSR_DSTATUS, dstatus_mask, 0));
+    for (int i = 0; i < 3; i++)
+      add_supervisor_csr(CSR_DRIGHTS0 + i, drights[i] = std::make_shared<dom_ctrl_csr_t>(proc, CSR_DRIGHTS0 + i, -1, 0));
+    add_supervisor_csr(CSR_DTARGET, dtarget = std::make_shared<masked_csr_t>(proc, CSR_DTARGET, (reg_t(1) << (3 * JITDOMAIN_NDOMS)) - 1, dtarget_identity));
+    add_supervisor_csr(CSR_DGATE, dgate = std::make_shared<basic_csr_t>(proc, CSR_DGATE, 0));
+    add_supervisor_csr(CSR_DSP, dsp = std::make_shared<basic_csr_t>(proc, CSR_DSP, 0));
+    add_supervisor_csr(CSR_DCAUSE, dcause = std::make_shared<basic_csr_t>(proc, CSR_DCAUSE, 0));
+    add_user_csr(CSR_CURDOM, std::make_shared<curdom_csr_t>(proc, CSR_CURDOM));
+    add_csr(CSR_DMPCFG0, std::make_shared<dmpcfg_csr_t>(proc, CSR_DMPCFG0));
+    add_csr(CSR_DMPCFG1, std::make_shared<dmpcfg_csr_t>(proc, CSR_DMPCFG1));
+    add_csr(CSR_MDSTATUS, mdstatus = std::make_shared<masked_csr_t>(proc, CSR_MDSTATUS, MDSTATUS_MPD | MDSTATUS_MPPEND, 0));
+  }
+
   // Smcdeleg
   if (proc->extension_enabled_const(EXT_SMCDELEG) || proc->extension_enabled_const(EXT_SSCCFG)) {
     add_supervisor_csr(CSR_SCOUNTINHIBIT, scountinhibit = std::make_shared<scntinhibit_csr_t>(proc, CSR_SCOUNTINHIBIT, mcountinhibit));

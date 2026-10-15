@@ -224,6 +224,18 @@ struct state_t
 
   elp_t elp;
 
+  // JITDomain (Xjitdomain)
+  reg_t curdom;
+  dpend_t dpend;
+  uint8_t dmpcfg[max_pmp];  // {L, k} per PMP entry
+  csr_t_p dstatus;
+  csr_t_p mdstatus;
+  csr_t_p drights[3];
+  csr_t_p dtarget;
+  csr_t_p dgate;
+  csr_t_p dsp;
+  csr_t_p dcause;
+
   bool critical_error;
 
  private:

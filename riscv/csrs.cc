@@ -2667,3 +2667,53 @@ void vstopei_csr_t::verify_permissions(insn_t insn, bool write) const {
       throw trap_illegal_instruction(insn.bits());
   }
 }
+
+dom_ctrl_csr_t::dom_ctrl_csr_t(processor_t* const proc, const reg_t addr, const reg_t mask, const reg_t init):
+  masked_csr_t(proc, addr, mask, init) {
+}
+
+bool dom_ctrl_csr_t::unlogged_write(const reg_t val) noexcept {
+  proc->get_mmu()->flush_tlb();
+  return masked_csr_t::unlogged_write(val);
+}
+
+curdom_csr_t::curdom_csr_t(processor_t* const proc, const reg_t addr):
+  csr_t(proc, addr) {
+}
+
+reg_t curdom_csr_t::read() const noexcept {
+  return set_field(set_field(0, CURDOM_PEND, state->dpend.pack()), CURDOM_DOM, state->curdom);
+}
+
+bool curdom_csr_t::unlogged_write(const reg_t UNUSED val) noexcept {
+  return false;
+}
+
+dmpcfg_csr_t::dmpcfg_csr_t(processor_t* const proc, const reg_t addr):
+  csr_t(proc, addr) {
+}
+
+void dmpcfg_csr_t::verify_permissions(insn_t insn, bool write) const {
+  csr_t::verify_permissions(insn, write);
+  // As for pmpcfg: decided at access time because n_pmp can change after reset()
+  if (first_entry() >= proc->n_pmp)
+    throw trap_illegal_instruction(insn.bits());
+}
+
+reg_t dmpcfg_csr_t::read() const noexcept {
+  reg_t val = 0;
+  for (size_t i = first_entry(); i < first_entry() + 16 && i < proc->n_pmp; i++)
+    val |= reg_t(state->dmpcfg[i]) << (4 * (i - first_entry()));
+  return val;
+}
+
+bool dmpcfg_csr_t::unlogged_write(const reg_t val) noexcept {
+  bool write_success = false;
+  for (size_t i = first_entry(); i < first_entry() + 16 && i < proc->n_pmp; i++) {
+    if (!(state->dmpcfg[i] & DMPCFG_L))
+      state->dmpcfg[i] = (val >> (4 * (i - first_entry()))) & (DMPCFG_L | DMPCFG_K);
+    write_success = true;
+  }
+  proc->get_mmu()->flush_tlb();
+  return write_success;
+}
