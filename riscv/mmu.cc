@@ -108,7 +108,7 @@ reg_t mmu_t::translate(mem_access_info_t access_info, reg_t len)
   return paddr;
 }
 
-// JITDomain access check (spec §5), after translation and the base PMP/PTE checks
+// JITDomain access check, after translation and the base PMP/PTE checks
 void mmu_t::dom_check(const mem_access_info_t& access_info, reg_t paddr, reg_t len, std::optional<reg_t> pte_key)
 {
   const state_t& state = proc->state;

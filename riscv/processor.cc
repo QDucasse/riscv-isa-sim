@@ -602,14 +602,18 @@ void processor_t::check_if_lpad_required()
 }
 
 // JITDomain: while a domain entry is pending, the next instruction must be a
-// domlpad for the pending domain whose label is 0 or the pending label
+// 4-byte aligned domlpad for the pending domain whose label is 0 or the
+// pending label. Alignment is checked first so a misaligned target is not fetched.
 void processor_t::check_if_domlpad_required()
 {
   if (unlikely(state.dpend.valid)) {
-    const reg_t bits = mmu->load_insn(state.pc).insn.bits();
-    const bool match = (bits & MASK_DOMLPAD) == MATCH_DOMLPAD &&
-                       DOMINSN_DOM(bits) == state.dpend.dom &&
-                       (DOMINSN_LABEL(bits) == 0 || DOMINSN_LABEL(bits) == state.dpend.label);
+    bool match = (state.pc & 3) == 0;
+    if (match) {
+      const reg_t bits = mmu->load_insn(state.pc).insn.bits();
+      match = (bits & MASK_DOMLPAD) == MATCH_DOMLPAD &&
+              DOMINSN_DOM(bits) == state.dpend.dom &&
+              (DOMINSN_LABEL(bits) == 0 || DOMINSN_LABEL(bits) == state.dpend.label);
+    }
     if (!match) {
       state.dcause->write(DCAUSE_LPAD);
       throw trap_domain_cfi(state.pc);
