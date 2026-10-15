@@ -44,4 +44,5 @@ if (STATE.prv == PRV_S) {
 }
 
 STATE.sstatus->write(s);
+p->restore_dom_state_on_xret(STATE.dstatus);
 p->set_privilege(prev_prv, prev_virt);

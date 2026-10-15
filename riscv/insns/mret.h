@@ -21,4 +21,5 @@ if (prev_virt && prev_prv == PRV_U)
 STATE.mstatus->write(s);
 if (STATE.mstatush) STATE.mstatush->write(s >> 32); // log mstatush change
 if (STATE.tcontrol) STATE.tcontrol->write((STATE.tcontrol->read() & CSR_TCONTROL_MPTE) ? (CSR_TCONTROL_MPTE | CSR_TCONTROL_MTE) : 0);
+p->restore_dom_state_on_xret(STATE.mdstatus);
 p->set_privilege(prev_prv, prev_virt);

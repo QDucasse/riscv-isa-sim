@@ -489,6 +489,7 @@ void processor_t::take_trap(trap_t& t, reg_t epc)
     if ((state.menvcfg->read() & MENVCFG_DTE) && (state.henvcfg->read() & HENVCFG_DTE))
       s = set_field(s, MSTATUS_SDT, 1);
     state.elp = elp_t::NO_LP_EXPECTED;
+    save_dom_state_on_trap(state.dstatus);
     state.sstatus->write(s);
     set_privilege(PRV_S, true);
   } else if (state.prv <= PRV_S && bit < max_xlen && ((hsdeleg >> bit) & 1)) {
@@ -509,6 +510,7 @@ void processor_t::take_trap(trap_t& t, reg_t epc)
     if (state.menvcfg->read() & MENVCFG_DTE)
       s = set_field(s, MSTATUS_SDT, 1);
     state.elp = elp_t::NO_LP_EXPECTED;
+    save_dom_state_on_trap(state.dstatus);
     state.nonvirtual_sstatus->write(s);
     if (extension_enabled('H')) {
       s = state.hstatus->read();
@@ -554,6 +556,7 @@ void processor_t::take_trap(trap_t& t, reg_t epc)
     s = set_field(s, MSTATUS_GVA, t.has_gva());
     s = set_field(s, MSTATUS_MPELP, state.elp);
     state.elp = elp_t::NO_LP_EXPECTED;
+    save_dom_state_on_trap(state.mdstatus);
     state.mstatus->write(s);
     if (state.mstatush) state.mstatush->write(s >> 32);  // log mstatush change
     if (state.tcontrol) state.tcontrol->write((state.tcontrol->read() & CSR_TCONTROL_MTE) ? CSR_TCONTROL_MPTE : 0);
@@ -596,6 +599,33 @@ void processor_t::check_if_lpad_required()
     insn_fetch_t fetch = mmu->load_insn(state.pc);
     software_check((fetch.insn.bits() & MASK_LPAD) == MATCH_LPAD, LANDING_PAD_FAULT);
   }
+}
+
+void processor_t::set_dom_state(reg_t curdom, dpend_t dpend)
+{
+  state.curdom = curdom;
+  state.dpend = dpend;
+}
+
+// JITDomain: a trap saves {curdom, dpend} in xPD/xPPEND and enters DOM0; xret
+// restores them. dstatus.SPD/SPPEND and mdstatus.MPD/MPPEND share bit positions.
+void processor_t::save_dom_state_on_trap(const csr_t_p& xdstatus)
+{
+  if (!extension_enabled(EXT_XJITDOMAIN))
+    return;
+  reg_t s = xdstatus->read();
+  s = set_field(s, DSTATUS_SPD, state.curdom);
+  s = set_field(s, DSTATUS_SPPEND, state.dpend.pack());
+  xdstatus->write(s);
+  set_dom_state(0, {});
+}
+
+void processor_t::restore_dom_state_on_xret(const csr_t_p& xdstatus)
+{
+  if (!extension_enabled(EXT_XJITDOMAIN))
+    return;
+  const reg_t s = xdstatus->read();
+  set_dom_state(get_field(s, DSTATUS_SPD), dpend_t::unpack(get_field(s, DSTATUS_SPPEND)));
 }
 
 reg_t processor_t::set_lpad_expected(reg_t pc)
