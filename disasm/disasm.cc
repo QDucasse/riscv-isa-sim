@@ -1147,6 +1147,20 @@ void disassembler_t::add_instructions(const isa_parser_t* isa, bool strict)
     }
   }
 
+  if (ext_enabled(EXT_XJITDOMAIN)) {
+    DEFINE_XLOAD(dlb)
+    DEFINE_XLOAD(dlh)
+    DEFINE_XLOAD(dlw)
+    DEFINE_XLOAD(dld)
+    DEFINE_XLOAD(dlbu)
+    DEFINE_XLOAD(dlhu)
+    DEFINE_XLOAD(dlwu)
+    DEFINE_XSTORE(dsb)
+    DEFINE_XSTORE(dsh)
+    DEFINE_XSTORE(dsw)
+    DEFINE_XSTORE(dsd)
+  }
+
   if (ext_enabled(EXT_ZICFILP)) {
     // lpad encodes as `auipc x0, label`, so it needs to be added before auipc
     // for higher disassembling priority

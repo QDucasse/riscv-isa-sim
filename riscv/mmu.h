@@ -78,9 +78,11 @@ struct xlate_flags_t {
   const bool clean_inval : 1 {false};
   const bool access_fault : 1 {false};
   const bool require_alignment : 1 {false};
+  const bool dom_typed : 1 {false};  // JITDomain typed access (dl*/ds*)
+  const bool dom_drs : 1 {false};    // JITDomain implicit DRS access
 
   bool is_special_access() const {
-    return forced_virt || hlvx || lr || ss_access || clean_inval || access_fault || require_alignment;
+    return forced_virt || hlvx || lr || ss_access || clean_inval || access_fault || require_alignment || dom_typed || dom_drs;
   }
 };
 
