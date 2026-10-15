@@ -71,6 +71,18 @@ struct : public arg_t {
 
 struct : public arg_t {
   std::string to_string(insn_t insn) const override {
+    return std::to_string(DOMINSN_DOM(insn.bits()));
+  }
+} domcall_dom;
+
+struct : public arg_t {
+  std::string to_string(insn_t insn) const override {
+    return std::to_string(DOMINSN_LABEL(insn.bits()));
+  }
+} domcall_label;
+
+struct : public arg_t {
+  std::string to_string(insn_t insn) const override {
     return std::to_string((uint32_t)insn.rvc_index());
   }
 } rvcm_jt_index;
@@ -1159,6 +1171,9 @@ void disassembler_t::add_instructions(const isa_parser_t* isa, bool strict)
     DEFINE_XSTORE(dsh)
     DEFINE_XSTORE(dsw)
     DEFINE_XSTORE(dsd)
+    DISASM_INSN("domcall", domcall, 0, {&xrd, &xrs1, &domcall_dom, &domcall_label});
+    DEFINE_NOARG(domret)
+    DISASM_INSN("domlpad", domlpad, 0, {&domcall_dom, &domcall_label});
   }
 
   if (ext_enabled(EXT_ZICFILP)) {

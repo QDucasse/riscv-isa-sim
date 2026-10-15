@@ -379,6 +379,7 @@ public:
 
   void check_if_lpad_required();
   reg_t set_lpad_expected(reg_t pc);
+  void check_if_domlpad_required();
   void set_dom_state(reg_t curdom, dpend_t dpend);
   void save_dom_state_on_trap(const csr_t_p& xdstatus);
   void restore_dom_state_on_xret(const csr_t_p& xdstatus);

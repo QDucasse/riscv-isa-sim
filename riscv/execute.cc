@@ -249,6 +249,8 @@ void processor_t::step(size_t n)
 
       check_if_lpad_required();
 
+      check_if_domlpad_required();
+
       if (unlikely(slow_path()))
       {
         // Main simulation loop, slow path.

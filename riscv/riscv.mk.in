@@ -33,6 +33,7 @@ riscv_install_hdrs = \
 	dts.h \
 	encoding.h \
 	jitdomain_encoding.h \
+	jitdomain.h \
 	entropy_source.h \
 	extension.h \
 	imsic.h \
@@ -1132,6 +1133,9 @@ riscv_insn_ext_xjitdomain = \
 	dsh \
 	dsw \
 	dsd \
+	domcall \
+	domret \
+	domlpad \
 
 riscv_insn_ext_zicfiss = \
 	sspush_x1 \
