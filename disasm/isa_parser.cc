@@ -244,6 +244,7 @@ static const extension_info_t extension_infos[] = {
   {"zvtdmm", {EXT_ZVTDMM}, {"zvt64e", "zve64d"}},
   {"zvzip", {EXT_ZVZIP}},
   {"zilx", {EXT_ZILX}},
+  {"xjitdomain", {EXT_XJITDOMAIN, 'X'}, {"s"}},
   {"sstc", {EXT_SSTC, EXT_ZICNTR}, {"s"}},
   {"smcsrind", {EXT_SMCSRIND}},
   {"sscsrind", {EXT_SSCSRIND}, {"s"}},
@@ -447,6 +448,10 @@ isa_parser_t::isa_parser_t(const char* str, const char *priv)
 
   if (extension_table[EXT_ZILSD] && max_xlen != 32) {
     bad_isa_string(str, "'Zilsd' requires RV32");
+  }
+
+  if (extension_table[EXT_XJITDOMAIN] && max_xlen != 64) {
+    bad_isa_string(str, "'Xjitdomain' requires RV64");
   }
 
   if (extension_table[EXT_SVUKTE] && max_xlen != 64) {

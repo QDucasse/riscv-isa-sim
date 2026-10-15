@@ -6630,3 +6630,5 @@ DECLARE_CAUSE("load guest page fault", CAUSE_LOAD_GUEST_PAGE_FAULT)
 DECLARE_CAUSE("virtual instruction", CAUSE_VIRTUAL_INSTRUCTION)
 DECLARE_CAUSE("store guest page fault", CAUSE_STORE_GUEST_PAGE_FAULT)
 #endif
+
+#include "jitdomain_encoding.h"
