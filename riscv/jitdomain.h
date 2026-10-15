@@ -13,6 +13,7 @@
     try { __VA_ARGS__; } \
     catch (trap_load_access_fault&) { DOMAIN_CFI_FAULT(DCAUSE_DRS); } \
     catch (trap_store_access_fault&) { DOMAIN_CFI_FAULT(DCAUSE_DRS); } \
+    catch (trap_domain_access_fault&) { DOMAIN_CFI_FAULT(DCAUSE_DRS); } \
   } while (0)
 
 // DRS records are 16 bytes, {pc (8 B), dom (1 B), pad (7 B)}, growing downward

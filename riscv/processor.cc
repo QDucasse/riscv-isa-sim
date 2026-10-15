@@ -619,6 +619,8 @@ void processor_t::check_if_domlpad_required()
 
 void processor_t::set_dom_state(reg_t curdom, dpend_t dpend)
 {
+  // Cached TLB entries were checked against the previous effective domain
+  mmu->flush_tlb();
   state.curdom = curdom;
   state.dpend = dpend;
 }

@@ -93,7 +93,8 @@ reg_t mmu_t::translate(mem_access_info_t access_info, reg_t len)
   bool virt = access_info.effective_virt;
   reg_t mode = (reg_t) access_info.effective_priv;
 
-  reg_t paddr = walk(access_info) | (addr & (PGSIZE-1));
+  std::optional<reg_t> pte_key;
+  reg_t paddr = walk(access_info, pte_key) | (addr & (PGSIZE-1));
 
   reg_t satp = proc->get_state()->satp->readvirt(virt);
   if (proc->extension_enabled_const(EXT_SSPMP)) {
@@ -102,7 +103,71 @@ reg_t mmu_t::translate(mem_access_info_t access_info, reg_t len)
   }
   if (!pmp_ok(paddr, len, access_info.flags.ss_access ? STORE : type, mode, access_info.flags.hlvx))
     throw_access_exception(virt, addr, access_info.flags.ss_access ? STORE : type);
+  if (proc->extension_enabled(EXT_XJITDOMAIN))
+    dom_check(access_info, paddr, len, pte_key);
   return paddr;
+}
+
+// JITDomain access check (spec §5), after translation and the base PMP/PTE checks
+void mmu_t::dom_check(const mem_access_info_t& access_info, reg_t paddr, reg_t len, std::optional<reg_t> pte_key)
+{
+  const state_t& state = proc->state;
+  const reg_t dstatus = state.dstatus->read();
+  if (!(dstatus & DSTATUS_EN) || state.debug_mode)
+    return;
+
+  // Track B takes the key from the PTE; Track A, without translation, from the matching PMP entry
+  const reg_t mode = access_info.effective_priv;
+  reg_t key = 0;
+  bool pmp_locked = false;
+  if (pte_key) {
+    key = *pte_key;
+  } else if (auto pmp = pmp_lookup(paddr, len, 0, proc->n_pmp); pmp.has_value()) {
+    key = state.dmpcfg[(*pmp)->index()] & DMPCFG_K;
+    pmp_locked = (*pmp)->is_locked();
+  }
+
+  const xlate_flags_t flags = access_info.flags;
+  const bool drs_page = key == get_field(dstatus, DSTATUS_DRSKEY);
+  auto fault = [&]() {
+    throw trap_domain_access_fault(access_info.effective_virt, access_info.transformed_vaddr, 0, 0);
+  };
+
+  // Implicit DRS accesses must hit DRS pages; nothing else may touch them from U mode
+  if (flags.dom_drs) {
+    if (!drs_page)
+      fault();
+    return;
+  }
+  if (drs_page && mode == PRV_U)
+    fault();
+
+  const bool checked = mode == PRV_U
+                    || (mode == PRV_S && (dstatus & DSTATUS_SCHK))
+                    || (mode == PRV_M && pmp_locked);
+  if (!checked)
+    return;
+
+  reg_t e = state.curdom;
+  if (access_info.type == FETCH && state.dpend.valid)
+    e = state.dpend.dom;
+  else if (flags.dom_typed)
+    e = (state.dtarget->read() >> (3 * state.curdom)) & 7;
+
+  reg_t need = access_info.type == FETCH ? DRIGHT_X
+             : access_info.type == LOAD && !flags.clean_inval ? DRIGHT_R
+             : DRIGHT_W;
+  if (flags.lr)
+    need |= DRIGHT_W;
+
+  // drights2:drights1:drights0, {X, W, R} at bit 3*(8*e+k); an entry may straddle two CSRs
+  reg_t rights = 0;
+  for (reg_t b = 0; b < 3; b++) {
+    const reg_t bit = 3 * (JITDOMAIN_NKEYS * e + key) + b;
+    rights |= ((state.drights[bit / 64]->read() >> (bit % 64)) & 1) << b;
+  }
+  if ((rights & need) != need)
+    fault();
 }
 
 inline mmu_t::insn_parcel_t mmu_t::perform_intrapage_fetch(reg_t vaddr, uintptr_t host_addr, reg_t paddr)
@@ -695,7 +760,7 @@ bool mmu_t::svukte_fault(reg_t addr, mem_access_info_t access_info)
   return addr >> (proc->get_xlen() - 1);
 }
 
-reg_t mmu_t::walk(mem_access_info_t access_info)
+reg_t mmu_t::walk(mem_access_info_t access_info, std::optional<reg_t>& pte_key)
 {
   access_type type = access_info.type;
   reg_t addr = access_info.transformed_vaddr;
@@ -720,6 +785,10 @@ reg_t mmu_t::walk(mem_access_info_t access_info)
   if (svukte_fault(addr, access_info)) {
     throw_page_fault_exception(virt, addr, trap_type);
   }
+
+  // JITDomain Track B: with dstatus.EN, leaf PTEs carry a key in otherwise reserved bits
+  const bool dom_keys = proc->extension_enabled(EXT_XJITDOMAIN) && (proc->state.dstatus->read() & DSTATUS_EN);
+  const reg_t pte_rsvd = dom_keys ? PTE_RSVD & ~PTE_DOMKEY : PTE_RSVD;
 
   bool s_mode = mode == PRV_S;
   bool sum = proc->state.sstatus->readvirt(virt) & MSTATUS_SUM;
@@ -748,7 +817,7 @@ reg_t mmu_t::walk(mem_access_info_t access_info)
     auto pte_pbmt = get_field(pte, PTE_PBMT);
     int napot_bits = ((pte & PTE_N) ? (ctz(ppn) + 1) : 0);
 
-    if (pte & PTE_RSVD) {
+    if (pte & pte_rsvd) {
       break;
     } else if (!proc->extension_enabled(EXT_SVRSW60T59B) && (pte & PTE_SVRSW60T59B)) {
         break;
@@ -759,7 +828,7 @@ reg_t mmu_t::walk(mem_access_info_t access_info)
     } else if (pte_pbmt == PBMT_RES) {
       break;
     } else if (PTE_TABLE(pte)) { // next level of page table
-      if (pte & (PTE_D | PTE_A | PTE_U | PTE_N | PTE_PBMT))
+      if (pte & (PTE_D | PTE_A | PTE_U | PTE_N | PTE_PBMT | (dom_keys ? PTE_DOMKEY : 0)))
         break;
       base = ppn << PGSHIFT;
     } else if ((pte & PTE_U) ? s_mode && (type == FETCH || !sum) : !s_mode) {
@@ -810,6 +879,8 @@ reg_t mmu_t::walk(mem_access_info_t access_info)
                         | (vpn & ((reg_t(1) << napot_bits) - 1))
                         | (vpn & ((reg_t(1) << ptshift) - 1))) << PGSHIFT;
       reg_t phys = page_base | (addr & page_mask);
+      if (dom_keys)
+        pte_key = get_field(pte, PTE_DOMKEY);
       return s2xlate(addr, phys, type, trap_type, virt, hlvx, false) & ~page_mask;
     }
   }

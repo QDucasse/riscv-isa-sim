@@ -443,7 +443,7 @@ private:
   reg_t s2xlate(reg_t gva, reg_t gpa, access_type type, access_type trap_type, bool virt, bool hlvx, bool is_for_vs_pt_addr);
 
   // perform a page table walk for a given VA; set referenced/dirty bits
-  reg_t walk(mem_access_info_t access_info);
+  reg_t walk(mem_access_info_t access_info, std::optional<reg_t>& pte_key);
 
   // handle uncommon cases: TLB misses, page faults, MMIO
   typedef uint16_t insn_parcel_t;
@@ -476,6 +476,7 @@ private:
   bool svukte_qualified(mem_access_info_t access_info);
   bool svukte_fault(reg_t addr, mem_access_info_t access_info);
   reg_t translate(mem_access_info_t access_info, reg_t len);
+  void dom_check(const mem_access_info_t& access_info, reg_t paddr, reg_t len, std::optional<reg_t> pte_key);
 
   reg_t pte_load(reg_t pte_paddr, reg_t addr, bool virt, access_type trap_type, size_t ptesize) {
     if (ptesize == 4)
