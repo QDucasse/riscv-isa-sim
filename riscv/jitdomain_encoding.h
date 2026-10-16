@@ -35,7 +35,7 @@
 #define CURDOM_DOM 0x0007
 #define CURDOM_PEND 0xfff8
 
-// Track B: key in leaf PTE bits [56:54], reserved again when dstatus.EN = 0
+// Key in leaf PTE bits [56:54], reserved again when dstatus.EN = 0
 #define PTE_DOMKEY 0x01C0000000000000ULL
 
 // drights entry {X, W, R}

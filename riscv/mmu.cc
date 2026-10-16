@@ -116,7 +116,7 @@ void mmu_t::dom_check(const mem_access_info_t& access_info, reg_t paddr, reg_t l
   if (!(dstatus & DSTATUS_EN) || state.debug_mode)
     return;
 
-  // Track B takes the key from the PTE; Track A, without translation, from the matching PMP entry
+  // With translation the key comes from the leaf PTE; without, from the matching PMP entry
   const reg_t mode = access_info.effective_priv;
   reg_t key = 0;
   bool pmp_locked = false;
@@ -786,7 +786,7 @@ reg_t mmu_t::walk(mem_access_info_t access_info, std::optional<reg_t>& pte_key)
     throw_page_fault_exception(virt, addr, trap_type);
   }
 
-  // JITDomain Track B: with dstatus.EN, leaf PTEs carry a key in otherwise reserved bits
+  // JITDomain: with dstatus.EN, leaf PTEs carry a key in otherwise reserved bits
   const bool dom_keys = proc->extension_enabled(EXT_XJITDOMAIN) && (proc->state.dstatus->read() & DSTATUS_EN);
   const reg_t pte_rsvd = dom_keys ? PTE_RSVD & ~PTE_DOMKEY : PTE_RSVD;
 
