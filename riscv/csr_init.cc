@@ -460,6 +460,8 @@ void state_t::csr_init(processor_t* const proc, reg_t max_isa)
     add_csr(CSR_DMPCFG0, std::make_shared<dmpcfg_csr_t>(proc, CSR_DMPCFG0));
     add_csr(CSR_DMPCFG1, std::make_shared<dmpcfg_csr_t>(proc, CSR_DMPCFG1));
     add_csr(CSR_MDSTATUS, mdstatus = std::make_shared<masked_csr_t>(proc, CSR_MDSTATUS, MDSTATUS_MPD | MDSTATUS_MPPEND, 0));
+    if (proc->extension_enabled_const(EXT_SMRNMI))
+      add_csr(CSR_MNDSTATUS, mndstatus = std::make_shared<masked_csr_t>(proc, CSR_MNDSTATUS, MNDSTATUS_MNPD | MNDSTATUS_MNPPEND, 0));
   }
 
   // Smcdeleg

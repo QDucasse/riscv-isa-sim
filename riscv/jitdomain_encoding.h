@@ -16,6 +16,7 @@
 #define CSR_DMPCFG0 0x7c3
 #define CSR_DMPCFG1 0x7c4
 #define CSR_MDSTATUS 0x7c5
+#define CSR_MNDSTATUS 0x7c6
 #define CSR_CURDOM 0xcc0
 
 #define DSTATUS_EN 0x00000001
@@ -26,6 +27,9 @@
 
 #define MDSTATUS_MPD 0x0000000e
 #define MDSTATUS_MPPEND 0x0001fff0
+
+#define MNDSTATUS_MNPD 0x0000000e
+#define MNDSTATUS_MNPPEND 0x0001fff0
 
 // Packed dpend, as held in xPPEND and in curdom[15:3]
 #define DPEND_DOM 0x0007
@@ -115,6 +119,7 @@ DECLARE_CSR(dcause, CSR_DCAUSE)
 DECLARE_CSR(dmpcfg0, CSR_DMPCFG0)
 DECLARE_CSR(dmpcfg1, CSR_DMPCFG1)
 DECLARE_CSR(mdstatus, CSR_MDSTATUS)
+DECLARE_CSR(mndstatus, CSR_MNDSTATUS)
 DECLARE_CSR(curdom, CSR_CURDOM)
 #endif
 #ifdef DECLARE_CAUSE

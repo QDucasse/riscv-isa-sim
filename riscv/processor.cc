@@ -604,9 +604,10 @@ void processor_t::check_if_lpad_required()
 // JITDomain: while a domain entry is pending, the next instruction must be a
 // 4-byte aligned domlpad for the pending domain whose label is 0 or the
 // pending label. Alignment is checked first so a misaligned target is not fetched.
+// Debug mode is exempt: the entry stays pending until dret resumes.
 void processor_t::check_if_domlpad_required()
 {
-  if (unlikely(state.dpend.valid)) {
+  if (unlikely(state.dpend.valid) && !state.debug_mode) {
     bool match = (state.pc & 3) == 0;
     if (match) {
       const reg_t bits = mmu->load_insn(state.pc).insn.bits();
@@ -630,7 +631,9 @@ void processor_t::set_dom_state(reg_t curdom, dpend_t dpend)
 }
 
 // JITDomain: a trap saves {curdom, dpend} in xPD/xPPEND and enters DOM0; xret
-// restores them. dstatus.SPD/SPPEND and mdstatus.MPD/MPPEND share bit positions.
+// restores them and clears xPPEND, so that a second xret cannot restore a stale
+// entry. dstatus, mdstatus and mndstatus share bit positions.
+// An RNMI would save into mndstatus, but Spike never delivers one.
 void processor_t::save_dom_state_on_trap(const csr_t_p& xdstatus)
 {
   if (!extension_enabled(EXT_XJITDOMAIN))
@@ -648,6 +651,7 @@ void processor_t::restore_dom_state_on_xret(const csr_t_p& xdstatus)
     return;
   const reg_t s = xdstatus->read();
   set_dom_state(get_field(s, DSTATUS_SPD), dpend_t::unpack(get_field(s, DSTATUS_SPPEND)));
+  xdstatus->write(set_field(s, DSTATUS_SPPEND, 0));
 }
 
 reg_t processor_t::set_lpad_expected(reg_t pc)

@@ -23,4 +23,5 @@ if (p->extension_enabled(EXT_ZICFILP)) {
   s = set_field(s, MNSTATUS_MNPELP, elp_t::NO_LP_EXPECTED);
 }
 STATE.mnstatus->write(s);
+p->restore_dom_state_on_xret(STATE.mndstatus);
 p->set_privilege(prev_prv, prev_virt);

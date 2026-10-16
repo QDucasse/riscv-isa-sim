@@ -230,6 +230,7 @@ struct state_t
   uint8_t dmpcfg[max_pmp];  // {L, k} per PMP entry
   csr_t_p dstatus;
   csr_t_p mdstatus;
+  csr_t_p mndstatus;
   csr_t_p drights[3];
   csr_t_p dtarget;
   csr_t_p dgate;
