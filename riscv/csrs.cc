@@ -1177,6 +1177,8 @@ bool medeleg_csr_t::unlogged_write(const reg_t val) noexcept {
         (1 << CAUSE_SOFTWARE_CHECK_FAULT) : 0)
     | (proc->extension_enabled(EXT_ZICNTR)?
         (1 << CAUSE_HARDWARE_ERROR_FAULT) : 0)
+    | (proc->extension_enabled(EXT_XJITDOMAIN)?
+        (1 << CAUSE_DOMAIN_ACCESS) | (1 << CAUSE_DOMAIN_CFI) : 0)
     ;
   return basic_csr_t::unlogged_write(val & mask);
 }
