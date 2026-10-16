@@ -157,8 +157,8 @@ void mmu_t::dom_check(const mem_access_info_t& access_info, reg_t paddr, reg_t l
   reg_t need = access_info.type == FETCH ? DRIGHT_X
              : access_info.type == LOAD && !flags.clean_inval ? DRIGHT_R
              : DRIGHT_W;
-  if (flags.lr)
-    need |= DRIGHT_W;
+  if (flags.lr || flags.dom_sc)
+    need = DRIGHT_R | DRIGHT_W;
 
   // drights2:drights1:drights0, {X, W, R} at bit 3*(8*e+k); an entry may straddle two CSRs
   reg_t rights = 0;

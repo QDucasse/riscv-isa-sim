@@ -80,9 +80,10 @@ struct xlate_flags_t {
   const bool require_alignment : 1 {false};
   const bool dom_typed : 1 {false};  // JITDomain typed access (dl*/ds*)
   const bool dom_drs : 1 {false};    // JITDomain implicit DRS access
+  const bool dom_sc : 1 {false};     // JITDomain SC, checked for R|W like LR
 
   bool is_special_access() const {
-    return forced_virt || hlvx || lr || ss_access || clean_inval || access_fault || require_alignment || dom_typed || dom_drs;
+    return forced_virt || hlvx || lr || ss_access || clean_inval || access_fault || require_alignment || dom_typed || dom_drs || dom_sc;
   }
 };
 
@@ -306,7 +307,7 @@ public:
     bool have_reservation = check_load_reservation(addr, sizeof(T));
 
     if (have_reservation)
-      store(addr, val);
+      store(addr, val, {.dom_sc=true});
 
     yield_load_reservation();
 
